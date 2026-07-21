@@ -1,0 +1,11 @@
+# 1. .gitignore 파일 생성 및 가상환경 폴더 제외
+echo "venv/" >> .gitignore
+echo "env/" >> .gitignore
+
+# 2. API 키가 들어있는 .env 파일 제외 (매우 중요!)
+echo ".env" >> .gitignore
+
+# 3. 파이썬 캐시 파일 등 불필요한 파일 제외
+echo "__pycache__/" >> .gitignore
+echo "*.pyc" >> .gitignore
+echo ".DS_Store" >> .gitignore
