@@ -1,0 +1,81 @@
+"""
+1팀 입력 JSON으로 입지 추천 실행.
+
+실행:  python kb/scripts/run_request.py [입력json경로]
+기본:  kb/data/team1_input.json
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from src.service.request_handler import recommend
+
+LABEL = {"transit": "교통", "vitality": "상권활력", "diversity": "업종다양성",
+         "competition": "동종경쟁", "foot": "유동인구", "resident": "배후인구",
+         "growth": "성장성", "school": "학교근접", "rent": "임대료",
+         "parking": "주차면수", "bld_area": "건물연면적",
+         "bld_comm_ratio": "상업용도비율", "supermarket": "대형마트"}
+
+
+def main() -> None:
+    path = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data" / "team1_input.json"
+    req = json.loads(path.read_text(encoding="utf-8"))
+
+    print("=" * 70)
+    print("입력 (1팀 JSON)")
+    print("=" * 70)
+    for k, v in req.items():
+        print(f"  {k:<18}{v}")
+
+    res = recommend(req)
+
+    print("\n" + "=" * 70)
+    print("입력 해석")
+    print("=" * 70)
+    print(f"  업종      : {req['business_type']} → 데이터업종 '{res['induty']}' → AHP '{res['ahp_industry']}'")
+    print(f"  지역      : {req['preferred_region']} → 자치구 '{res['sigungu']}'")
+    print(f"  타깃연령   : {res['ages'] or '전체(미지정)'} → 유동인구 세그먼트")
+    print(f"  AHP 커버율 : {res['coverage']*100:.1f}%")
+
+    print("\n가중치: AHP(base) → priority 재가중(final)")
+    keys = sorted(set(res["weights_base"]) | set(res["weights_final"]),
+                  key=lambda k: -res["weights_final"].get(k, 0))
+    print(f"  {'지표':<14}{'base':>8}{'final':>8}")
+    for k in keys:
+        b = res["weights_base"].get(k, 0)
+        f = res["weights_final"].get(k, 0)
+        tag = " ←priority" if f > b + 1e-4 else ""
+        print(f"  {LABEL.get(k,k):<14}{b:>8.3f}{f:>8.3f}{tag}")
+
+    print("\n" + "=" * 70)
+    print(f"추천 결과 (후보 {res['n_candidates']}곳 / 하드필터 탈락 {len(res['filtered'])}곳)")
+    print("=" * 70)
+    for i, r in enumerate(res["rows"], 1):
+        print(f"  {i}. {r['name']:<22}{r['score']:>6} 점")
+
+    if res["rows"]:
+        top = res["rows"][0]
+        print(f"\n1위 [{top['name']}] 근거")
+        for k, v in sorted(top["contrib"].items(), key=lambda x: -x[1]):
+            print(f"    {LABEL.get(k,k):<14}백분위 {float(top['norm'][k]):>3.0f}%  기여 {v:>5.1f}")
+        if top["cost"]:
+            c = top["cost"]
+            print(f"\n  예상 비용(임대료 기반 추정)")
+            print(f"    월세 {c['monthly']/1e4:>6,.0f}만 · 보증금 {c['deposit']/1e8:.2f}억 "
+                  f"· 권리금 {c['key_money']/1e8:.2f}억 · 시설 {c['fitout']/1e8:.2f}억")
+            print(f"    초기자금 합계 {c['total']/1e8:.2f}억  (자기자본 {req['capital']/1e8:.1f}억)")
+
+    if res["filtered"][:5]:
+        print("\n하드필터 탈락 예시:")
+        for f in res["filtered"][:5]:
+            print(f"    {f['name']:<22}{', '.join(f['reasons'])}")
+
+
+if __name__ == "__main__":
+    main()
