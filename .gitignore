@@ -10,3 +10,4 @@ echo "__pycache__/" >> .gitignore
 echo "*.pyc" >> .gitignore
 echo ".DS_Store" >> .gitignore.env
 venv/
+.env
