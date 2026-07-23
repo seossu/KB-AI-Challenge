@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.service.request_handler import recommend
+from src.service.team1_adapter import adapt
 
 LABEL = {"transit": "교통", "vitality": "상권활력", "diversity": "업종다양성",
          "competition": "동종경쟁", "foot": "유동인구", "resident": "배후인구",
@@ -25,12 +26,15 @@ LABEL = {"transit": "교통", "vitality": "상권활력", "diversity": "업종�
 
 def main() -> None:
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data" / "team1_input.json"
-    req = json.loads(path.read_text(encoding="utf-8"))
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    req = adapt(raw)   # 1팀 JSON(감싸진 형태·문자열 capital·배열 region)도 수용
 
     print("=" * 70)
     print("입력 (1팀 JSON)")
     print("=" * 70)
     for k, v in req.items():
+        if k.startswith("_"):
+            continue
         print(f"  {k:<18}{v}")
 
     res = recommend(req)
@@ -38,9 +42,10 @@ def main() -> None:
     print("\n" + "=" * 70)
     print("입력 해석")
     print("=" * 70)
-    print(f"  업종      : {req['business_type']} → 데이터업종 '{res['induty']}' → AHP '{res['ahp_industry']}'")
+    print(f"  업종      : {req['business_type']} → 데이터업종 '{res['induty']}' → AHP '{res['ahp_industry'] or '없음(학습 경로)'}'")
     print(f"  지역      : {req['preferred_region']} → 자치구 '{res['sigungu']}'")
     print(f"  타깃연령   : {res['ages'] or '전체(미지정)'} → 유동인구 세그먼트")
+    print(f"  가중치 출처 : {res['weight_source']}")
     print(f"  AHP 커버율 : {res['coverage']*100:.1f}%")
 
     print("\n가중치: AHP(base) → priority 재가중(final)")
@@ -54,7 +59,8 @@ def main() -> None:
         print(f"  {LABEL.get(k,k):<14}{b:>8.3f}{f:>8.3f}{tag}")
 
     print("\n" + "=" * 70)
-    print(f"추천 결과 (후보 {res['n_candidates']}곳 / 하드필터 탈락 {len(res['filtered'])}곳)")
+    print(f"추천 결과 (후보 {res['n_candidates']}곳 / 조건탈락 {len(res['filtered'])}곳 "
+          f"/ 업종표본없음 {len(res['no_sample'])}곳)")
     print("=" * 70)
     for i, r in enumerate(res["rows"], 1):
         print(f"  {i}. {r['name']:<22}{r['score']:>6} 점")

@@ -35,7 +35,9 @@ from src.collectors.seoul_area import load_area
 from src.service.industry_scoring import (
     INDUSTRY_AHP, INDUSTRY_INDUTY, build_indicator_panel, normalize, resolve_weights,
 )
+from src.models.industry_weight_learner import learn_weights as _learn
 from src.service.reweight import reweight
+from src.service.team1_adapter import adapt
 
 # 업종(데이터 100종) → AHP 산업 폴백
 INDUTY_TO_AHP = {
@@ -53,6 +55,8 @@ BUSINESS_TO_INDUTY = {
     "카페": "커피-음료", "분식점": "분식전문점", "베이커리": "제과점", "빵집": "제과점",
     "편의점": "편의점", "치킨집": "치킨전문점", "네일샵": "네일숍",
     "학원": "일반교습학원", "동물병원": "동물병원", "미용실": "미용실",
+    "PC방": "PC방", "피시방": "PC방", "노래방": "노래방",
+    "세탁소": "세탁소", "호프집": "호프-간이주점", "술집": "호프-간이주점",
 }
 
 # priority 라벨 → 지표키 (★ '???' 였던 부분)
@@ -112,7 +116,12 @@ def estimate_initial_cost(rent_per_m2: float, pyeong: float) -> dict:
             "total": deposit + key_money + fitout + opex}
 
 
-def recommend(req: dict, alpha: float = 0.35, top_n: int = 5) -> dict:
+def recommend(req: dict, alpha: float = 0.35, top_n: int = 5,
+              min_store: int = 1) -> dict:
+    """min_store: 해당 업종 점포가 이 수 미만인 상권은 후보 제외.
+    (업종이 아예 없는 곳은 '경쟁 없어 좋은 곳'이 아니라 '수요 없는 곳'일 수 있고,
+     경쟁 지표가 NaN 이 되어 점수가 부풀려지므로 검증 불가로 간주)"""
+    req = adapt(req)   # 1팀 JSON({extracted_data,...}·문자열 capital·배열 region) 정규화
     induty = BUSINESS_TO_INDUTY.get(req["business_type"], req["business_type"])
     ahp_ind = INDUTY_TO_AHP.get(induty)
     ages = parse_ages(req.get("target_customer"))
@@ -122,8 +131,24 @@ def recommend(req: dict, alpha: float = 0.35, top_n: int = 5) -> dict:
     gu, region_mask = resolve_region(req["preferred_region"], area)
     trdar_ids = set(area.loc[region_mask, "trdar_cd"].dropna().astype(int))
 
-    # AHP 가중치 → priority 볼록결합 재가중
-    weights, directions, missing, cov = resolve_weights(ahp_ind)
+    # 가중치 출처 결정: ① AHP 문헌 있으면 그것, ② 없으면 실데이터 학습
+    if ahp_ind:
+        weights, directions, missing, cov = resolve_weights(ahp_ind)
+        wsource = f"AHP 문헌 ({ahp_ind})"
+    else:
+        lr = _learn(induty)
+        if lr.get("ok"):
+            weights = dict(lr["weights"])
+            directions = dict(lr["directions"])
+            missing, cov = [], 1.0
+            wsource = f"실데이터 학습 (표본 {lr['n']}개 상권, CV AUC {lr['auc']:.3f})"
+        else:                                    # 학습도 실패 → 균등 폴백
+            keys = ["competition", "vitality", "foot", "resident", "transit"]
+            weights = {k: 1 / len(keys) for k in keys}
+            directions = {"competition": "down", "vitality": "up", "foot": "up",
+                          "resident": "up", "transit": "up"}
+            missing, cov = [], 0.0
+            wsource = f"균등 가중 폴백 ({lr.get('reason','학습 불가')})"
     prios = [PRIORITY_MAP[p] for p in (req.get("priority") or []) if p in PRIORITY_MAP]
     final = reweight(weights, prios, ranked=True, alpha=alpha) if prios else weights
     for p in prios:
@@ -132,12 +157,18 @@ def recommend(req: dict, alpha: float = 0.35, top_n: int = 5) -> dict:
     panel = build_indicator_panel(induty, sigungu=gu, ages=ages)
     norm = normalize(panel, directions)
 
-    rows, filtered = [], []
+    rows, filtered, no_sample = [], [], []
     for idx in panel.index:
         if int(idx) not in trdar_ids:
             continue
         p = panel.loc[idx]
         reasons = []
+        # 업종 표본 없는 상권 제외 (경쟁 지표 계산 불가)
+        n_store = pd.to_numeric(pd.Series([p.get("competition")]),
+                                errors="coerce").fillna(0).iat[0]
+        if n_store < min_store:
+            no_sample.append(p["trdar_cd_nm"])
+            continue
         # 하드필터
         if req.get("parking") and not (pd.notna(p.get("parking")) and p["parking"] > 0):
             reasons.append("주차 없음")
@@ -159,6 +190,7 @@ def recommend(req: dict, alpha: float = 0.35, top_n: int = 5) -> dict:
         rows.append({"name": p["trdar_cd_nm"], "score": round(sum(contrib.values()) / used, 1),
                      "contrib": contrib, "cost": cost, "norm": norm.loc[idx]})
     rows.sort(key=lambda r: -r["score"])
-    return {"induty": induty, "ahp_industry": ahp_ind, "sigungu": gu, "ages": ages,
+    return {"induty": induty, "ahp_industry": ahp_ind, "weight_source": wsource, "sigungu": gu, "ages": ages,
             "coverage": cov, "weights_base": weights, "weights_final": final,
-            "rows": rows[:top_n], "filtered": filtered, "n_candidates": len(rows)}
+            "rows": rows[:top_n], "filtered": filtered, "no_sample": no_sample,
+            "n_candidates": len(rows)}
