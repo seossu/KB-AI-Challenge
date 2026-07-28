@@ -1,11 +1,16 @@
-# 1. .gitignore 파일 생성 및 가상환경 폴더 제외
-echo "venv/" >> .gitignore
-echo "env/" >> .gitignore
+# 모든 폴더의 환경변수 파일 원천 차단
+.env
 
-# 2. API 키가 들어있는 .env 파일 제외 (매우 중요!)
-echo ".env" >> .gitignore
+# 가상환경 및 패키지 모듈 폴더
+venv/
+node_modules/
+.venv/
 
-# 3. 파이썬 캐시 파일 등 불필요한 파일 제외
-echo "__pycache__/" >> .gitignore
-echo "*.pyc" >> .gitignore
-echo ".DS_Store" >> .gitignore
+# 파이썬 캐시 파일 (이것도 깃허브에 올라가면 지저분해집니다)
+__pycache__/
+*.pyc
+*/__pycache__/*
+_cache/
+
+# 맥 OS 시스템 파일
+.DS_Store
