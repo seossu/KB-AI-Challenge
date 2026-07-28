@@ -52,6 +52,7 @@ def _join(panel: pd.DataFrame, dong_df: pd.DataFrame, gu_df: pd.DataFrame,
 
 def attach(panel: pd.DataFrame, sigungu: str | None = None) -> pd.DataFrame:
     """패널에 외부 지표 결합. sigungu 지정 시 그 구의 건축물대장까지 수집."""
+    print("  (최초 실행은 공개데이터 다운로드로 수 분 소요됩니다. 이후엔 캐시로 즉시)", flush=True)
     # 1) 실거래가 → rent
     rtms = collect_rtms(MONTHS)
     if not rtms.empty:

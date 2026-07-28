@@ -77,7 +77,8 @@ def collect(months: list[str], gus: list[str] | None = None,
     key = _key()
     gus = gus or list(SEOUL_LAWD)
     rows = []
-    for gu in gus:
+    for i, gu in enumerate(gus, 1):
+        print(f"  [실거래가 다운로드] {gu} ({i}/{len(gus)})...", flush=True)
         for ym in months:
             try:
                 rows += fetch_month(SEOUL_LAWD[gu], ym, key)

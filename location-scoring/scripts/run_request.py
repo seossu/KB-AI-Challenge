@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.service.request_handler import recommend
 from src.service.team1_adapter import adapt
+from src.service.financial_profile import build_profile, format_profile
 
 LABEL = {"transit": "교통", "vitality": "상권활력", "diversity": "업종다양성",
          "competition": "동종경쟁", "foot": "유동인구", "resident": "배후인구",
@@ -70,12 +71,31 @@ def main() -> None:
         print(f"\n1위 [{top['name']}] 근거")
         for k, v in sorted(top["contrib"].items(), key=lambda x: -x[1]):
             print(f"    {LABEL.get(k,k):<14}백분위 {float(top['norm'][k]):>3.0f}%  기여 {v:>5.1f}")
-        if top["cost"]:
-            c = top["cost"]
-            print(f"\n  예상 비용(임대료 기반 추정)")
-            print(f"    월세 {c['monthly']/1e4:>6,.0f}만 · 보증금 {c['deposit']/1e8:.2f}억 "
-                  f"· 권리금 {c['key_money']/1e8:.2f}억 · 시설 {c['fitout']/1e8:.2f}억")
-            print(f"    초기자금 합계 {c['total']/1e8:.2f}억  (자기자본 {req['capital']/1e8:.1f}억)")
+
+        # ③④⑤ 금융 프로파일 (추천 1위 상권 기준)
+        req_ctx = dict(req)
+        req_ctx["_induty"] = res["induty"]
+        req_ctx["_sigungu"] = res["sigungu"]
+        req_ctx["_pyeong"] = req.get("store_size_pyeong")
+        top_loc = {"name": top["name"], "sigungu": res["sigungu"],
+                   "adstrd": top.get("adstrd")}
+        profile = build_profile(req_ctx, top_loc)
+        print("\n" + "=" * 70)
+        print(format_profile(profile))
+        print("=" * 70)
+        gapf, gapo = profile["gap_facility"], profile["gap_operating"]
+        if profile["affordability"] == "sufficient":
+            print("→ 보유자금으로 충분. 금융추천 불필요.")
+        elif profile["affordability"] == "over_budget":
+            print(f"→ ⚠️ 부족자금 {profile['fund_gap']/1e4:,.0f}만 > 대출여력 "
+                  f"{profile['loan_capacity']/1e4:,.0f}만 — 규모 축소나 저가 상권을 권장")
+        else:
+            need = []
+            if gapf > 0:
+                need.append(f"시설자금 {gapf/1e4:,.0f}만")
+            if gapo > 0:
+                need.append(f"운영자금 {gapo/1e4:,.0f}만")
+            print(f"→ [⑥ 금융수요] {' + '.join(need)} 부족 (대출여력 내) → 금융상품 추천으로")
 
     if res["filtered"][:5]:
         print("\n하드필터 탈락 예시:")

@@ -177,8 +177,8 @@ def recommend(req: dict, alpha: float = 0.35, top_n: int = 5,
         cost = None
         if pyeong and pd.notna(p.get("rent")):
             cost = estimate_initial_cost(float(p["rent"]), pyeong)
-            if cost["total"] > req["capital"]:
-                reasons.append(f"초기자금 초과({cost['total']/1e8:.2f}억>{req['capital']/1e8:.1f}억)")
+            # ※ 자금 부족은 하드필터 대상이 아님 — ⑤부족자금→⑥금융추천에서 대출로 메꿈.
+            #    입지 자체가 부적합한 조건(주차·교통·평수)만 여기서 탈락시킨다.
         if reasons:
             filtered.append({"name": p["trdar_cd_nm"], "reasons": reasons})
             continue
@@ -188,7 +188,8 @@ def recommend(req: dict, alpha: float = 0.35, top_n: int = 5,
             continue
         used = sum(final[k] for k in contrib) or 1
         rows.append({"name": p["trdar_cd_nm"], "score": round(sum(contrib.values()) / used, 1),
-                     "contrib": contrib, "cost": cost, "norm": norm.loc[idx]})
+                     "contrib": contrib, "cost": cost, "norm": norm.loc[idx],
+                     "adstrd": p.get("adstrd")})
     rows.sort(key=lambda r: -r["score"])
     return {"induty": induty, "ahp_industry": ahp_ind, "weight_source": wsource, "sigungu": gu, "ages": ages,
             "coverage": cov, "weights_base": weights, "weights_final": final,

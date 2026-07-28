@@ -52,7 +52,9 @@ def collect(cache_dir: Path | None = None, force: bool = False) -> pd.DataFrame:
         if not items:
             break
         rows += items
-        if page * PAGE >= int(body.get("totalCount", 0)):
+        total = int(body.get("totalCount", 0))
+        print(f"  [주차장 다운로드] {len(rows):,}/{total:,}건...", flush=True)
+        if page * PAGE >= total:
             break
         page += 1
 
