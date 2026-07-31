@@ -1,19 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
-const { OpenAI } = require('openai'); 
+const { OpenAI } = require('openai');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// 지연 초기화: 키가 없어도 서버가 죽지 않게 (입지 추천은 이 라우트와 무관하게 동작)
+let supabase = null;
+let openai = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+}
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 router.post('/', async (req, res) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({
+        ok: false,
+        reason: '금융상품 DB(Supabase)가 아직 연결되지 않았습니다. (.env 설정 필요)',
+      });
+    }
     const profile = req.body.financial_profile;
     
     // ==========================================

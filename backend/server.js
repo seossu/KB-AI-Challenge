@@ -12,6 +12,14 @@ app.use(express.json());
 const recommendRoutes = require('./routes/recommend');
 app.use('/api/recommend', recommendRoutes);
 
+// 입지 추천 (파이썬 엔진 연결)
+const locationRoutes = require('./routes/location');
+app.use('/api/location', locationRoutes);
+
+// 대화형 입력 파싱 (OpenAI)
+const chatRoutes = require('./routes/chat');
+app.use('/api/chat', chatRoutes);
+
 app.get('/', (req, res) => {
   res.send('금융상품 추천 백엔드 서버가 정상 작동 중입니다!');
 });

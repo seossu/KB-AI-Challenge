@@ -150,11 +150,19 @@ def build_indicator_panel(induty: str | None, quarter: int = Q_CUR,
 
 
 def normalize(panel: pd.DataFrame, used: dict) -> pd.DataFrame:
-    """used = {지표키: 방향} → 백분위(0~100, 방향통일)."""
+    """used = {지표키: 방향} → 백분위(0~100, 방향통일).
+
+    ※ 패널에 없는 지표(예: 건축물대장 미수집 지역의 bld_area)는 건너뛴다.
+      → scoring 단계에서 결측 지표는 가중치를 자동 재정규화하여 제외한다.
+    """
     norm = pd.DataFrame(index=panel.index)
     norm["trdar_cd_nm"] = panel["trdar_cd_nm"]
     for key, direction in used.items():
+        if key not in panel.columns:          # 데이터 미보유 지표 → skip
+            continue
         col = pd.to_numeric(panel[key], errors="coerce")
+        if col.notna().sum() == 0:            # 전부 결측 → skip
+            continue
         pct = col.rank(pct=True) * 100
         norm[key] = (100 - pct) if direction == "down" else pct
     return norm
