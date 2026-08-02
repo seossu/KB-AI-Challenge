@@ -70,26 +70,27 @@ def run(req: dict) -> dict:
         return {"ok": False, "reason": "추천 후보 없음 (조건에 맞는 상권을 찾지 못함)",
                 "sigungu": res.get("sigungu"), "induty": res.get("induty")}
 
-    top = rows[0]
-    lat, lng = _coords_for(top["name"], res.get("sigungu"))
-    naver_q = f"{top['name']}"
-
     LABEL = {"transit": "교통", "vitality": "상권활력", "competition": "동종경쟁",
              "foot": "유동인구", "resident": "배후인구", "growth": "성장성",
              "rent": "임대료", "parking": "주차", "bld_area": "건물규모",
              "supermarket": "대형마트", "school": "학교근접", "diversity": "업종다양성"}
-    reasons = [{"label": LABEL.get(k, k), "pct": round(float(top["norm"].get(k, 0)))}
-               for k, _ in sorted(top["contrib"].items(), key=lambda x: -x[1])[:3]]
+    sigungu = res.get("sigungu")
 
+    # 한 후보(row)를 프론트가 쓰는 완전한 입지객체로 변환 (좌표·상위3 이유 포함)
+    def build_loc(row):
+        la, ln = _coords_for(row["name"], sigungu)
+        reasons = [{"label": LABEL.get(k, k), "pct": round(float(row["norm"].get(k, 0)))}
+                   for k, _ in sorted(row["contrib"].items(), key=lambda x: -x[1])[:3]]
+        return {"name": row["name"], "score": row["score"],
+                "lat": la, "lng": ln, "naverQuery": row["name"], "reasons": reasons}
+
+    top = rows[0]
     out = {
         "ok": True,
-        "location": {
-            "name": top["name"], "score": top["score"],
-            "lat": lat, "lng": lng, "naverQuery": naver_q, "reasons": reasons,
-        },
-        "candidates": [{"name": r["name"], "score": r["score"]} for r in rows[:5]],
+        "location": build_loc(top),                       # 1순위 (하위호환)
+        "candidates": [build_loc(r) for r in rows[:3]],   # 1·2·3순위 (좌표·이유 포함)
         "induty": res.get("induty"), "ahp_industry": res.get("ahp_industry"),
-        "weight_source": res.get("weight_source"), "sigungu": res.get("sigungu"),
+        "weight_source": res.get("weight_source"), "sigungu": sigungu,
     }
 
     # 금융 프로파일(③④⑤) — 창업비용 계산은 상권 임대 시세 필요

@@ -26,7 +26,13 @@ export default function Chat({ onFinish }) {
     setInput('');
     setBusy(true);
 
-    const { extracted: ex, next_question, ready } = await chatParse(history);
+    // GPT 에 보낼 대화: assistant 턴은 화면 텍스트가 아니라 '전체 JSON'을 넣는다
+    // (main.py 처럼 모델이 자기가 뽑은 누적 상태를 매 턴 보게 함 → 문맥 파악 정확)
+    const apiHistory = history.map((m) =>
+      m.role === 'assistant' && m.apiContent ? { role: 'assistant', content: m.apiContent } : m
+    );
+
+    const { extracted: ex, next_question, ready, raw } = await chatParse(apiHistory);
     const merged = { ...extracted, ...clean(ex) };
     setExtracted(merged);
 
@@ -39,7 +45,8 @@ export default function Chat({ onFinish }) {
       setTimeout(() => onFinish(merged), 900); // → 설문 페이지로 자동 이동
       return;
     }
-    setMessages((m) => [...m, { role: 'assistant', content: next_question || '조금 더 알려주세요.' }]);
+    // 화면엔 next_question, 모델용 apiContent 엔 전체 JSON 저장
+    setMessages((m) => [...m, { role: 'assistant', content: next_question || '조금 더 알려주세요.', apiContent: raw }]);
     setCanProceed(!!(merged.business_type && merged.preferred_region && merged.capital));
     setBusy(false);
   }

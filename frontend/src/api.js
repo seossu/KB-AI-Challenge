@@ -74,6 +74,7 @@ export async function chatParse(history) {
         extracted: clean(data.extracted),
         next_question: data.next_question,
         ready: data.ready,
+        raw: data.raw, // main.py 처럼 모델에 되먹일 전체 JSON
       };
     }
   } catch (e) { /* 폴백 */ }
@@ -110,10 +111,54 @@ function clean(obj) {
 // 백엔드 주소 (개발: localhost:8080). 배포 시 환경변수로 교체.
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 
-/* ── 입지 + 금융 추천 ──
-   phase1(입지조건) + profile(금융설문) → 결과
-   1) /api/location : 파이썬 실제 입지 추천 (진짜 데이터)
-   2) /api/recommend: 금융상품 스코어링 (DB 연결 전이면 mock 폴백) */
+/* ── 입지만 추천 (대화형 1단계) ──
+   phase1(입지조건) → 입지 결과(지도/비용)만. 금융상품은 이후 설문 단계에서 별도로.
+   /api/location : 파이썬 실제 입지 추천 (진짜 데이터) */
+export async function recommendLocation(phase1) {
+  try {
+    const r = await fetch(`${API_BASE}/api/location`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...phase1 }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      const g = data.location;
+      return {
+        location: {
+          name: g.name, score: g.score, lat: g.lat, lng: g.lng,
+          naverQuery: g.naverQuery || g.name, reasons: g.reasons || [],
+        },
+        candidates: data.candidates || [],
+        cost: data.cost
+          ? { required: data.cost.required, capital: data.cost.capital, gap: data.cost.gap }
+          : null,
+        phase1,
+      };
+    }
+    return locFallback(phase1, data.reason || '추천 실패');
+  } catch (e) {
+    return locFallback(phase1, `백엔드 연결 실패 (${e.message}) — mock으로 표시`);
+  }
+}
+
+// 입지 추천 실패 시: 입력 지역 근사 좌표로 폴백(지도는 뜨게)
+function locFallback(phase1, reason) {
+  const geo = pickGeo(phase1.preferred_region || '');
+  return {
+    _fallback: reason, phase1, cost: null, candidates: [],
+    location: { name: geo.name, score: null, lat: geo.lat, lng: geo.lng,
+      naverQuery: geo.name, reasons: [] },
+  };
+}
+
+/* ── 금융상품만 추천 (설문 제출 후, 입지결과에 이어붙일 용도) ── */
+export async function recommendFinance(profile) {
+  return { recommendations: await recommendProducts(profile) };
+}
+
+/* ── 입지 + 금융 추천 (한번에; 현재 미사용, 하위호환용) ──
+   phase1(입지조건) + profile(금융설문) → 결과 */
 export async function recommend(phase1, profile) {
   // 입력 병합: 입지조건 + 금융설문 필드
   const payload = { ...phase1, ...flattenProfile(profile) };
