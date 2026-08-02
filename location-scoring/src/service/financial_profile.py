@@ -40,6 +40,15 @@ def _age(birth_year) -> int | None:
         return None
 
 
+
+def _parse_num(v):
+    """'20평'·'20' → 20.0 / None → None"""
+    if v is None:
+        return None
+    import re
+    m = re.search(r"(\d+(?:\.\d+)?)", str(v))
+    return float(m.group(1)) if m else None
+
 def build_profile(req: dict, top_location: dict) -> dict:
     """사용자 입력(req) + 추천 상권 1곳(top_location) → 금융 프로파일.
 
@@ -47,7 +56,9 @@ def build_profile(req: dict, top_location: dict) -> dict:
     창업비용 계산엔 상권의 임대 시세가 필요하므로 sigungu/dong 을 넘긴다.
     """
     induty = req.get("_induty") or req.get("business_type")
-    pyeong = float(req.get("store_size_pyeong") or req.get("_pyeong") or 20)
+    # 평수: 대화형은 필수(프론트/백엔드에서 강제). 없으면 기본 20평(설문형 자금측정 등).
+    pyeong = float(req.get("store_size_pyeong") or req.get("_pyeong")
+                   or _parse_num(req.get("store_size")) or 20)
     sigungu = top_location.get("sigungu") or req.get("_sigungu")
     dong = top_location.get("adstrd")
     is_fr = bool(req.get("franchise", False))

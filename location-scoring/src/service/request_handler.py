@@ -125,7 +125,9 @@ def recommend(req: dict, alpha: float = 0.35, top_n: int = 5,
     induty = BUSINESS_TO_INDUTY.get(req["business_type"], req["business_type"])
     ahp_ind = INDUTY_TO_AHP.get(induty)
     ages = parse_ages(req.get("target_customer"))
-    pyeong = parse_pyeong(req.get("store_size"))
+    # 평수: store_size_pyeong(대화형·설문형) 우선, 없으면 store_size(문자열) 파싱
+    pyeong = parse_pyeong(req.get("store_size_pyeong") if req.get("store_size_pyeong") is not None
+                          else req.get("store_size"))
 
     area = load_area()
     gu, region_mask = resolve_region(req["preferred_region"], area)
