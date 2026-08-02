@@ -90,7 +90,10 @@ def run(req: dict) -> dict:
         "location": build_loc(top),                       # 1순위 (하위호환)
         "candidates": [build_loc(r) for r in rows[:3]],   # 1·2·3순위 (좌표·이유 포함)
         "induty": res.get("induty"), "ahp_industry": res.get("ahp_industry"),
-        "weight_source": res.get("weight_source"), "sigungu": sigungu,
+        "weight_source": res.get("weight_source"),
+        "is_fallback": bool(res.get("is_fallback")),
+        "fallback_reason": res.get("fallback_reason"),
+        "sigungu": sigungu,
     }
 
     # 금융 프로파일(③④⑤) — 창업비용 계산은 상권 임대 시세 필요
@@ -105,6 +108,8 @@ def run(req: dict) -> dict:
             "required": prof["required_fund"], "capital": prof["capital"],
             "gap": prof["fund_gap"], "gap_facility": prof["gap_facility"],
             "gap_operating": prof["gap_operating"],
+            "breakdown": prof["cost_breakdown"],
+            "basis": prof["cost_basis"],
         }
         out["financial_profile"] = {
             "is_youth": prof["is_youth"], "business_stage": prof["business_stage"],

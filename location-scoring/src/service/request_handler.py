@@ -133,7 +133,9 @@ def recommend(req: dict, alpha: float = 0.35, top_n: int = 5,
     gu, region_mask = resolve_region(req["preferred_region"], area)
     trdar_ids = set(area.loc[region_mask, "trdar_cd"].dropna().astype(int))
 
-    # 가중치 출처 결정: ① AHP 문헌 있으면 그것, ② 없으면 실데이터 학습
+    # 가중치 출처 결정: ① AHP 문헌 ② 실데이터 학습 ③ 균등 가중치 최종 폴백
+    is_fallback = False
+    fallback_reason = None
     if ahp_ind:
         weights, directions, missing, cov = resolve_weights(ahp_ind)
         wsource = f"AHP 문헌 ({ahp_ind})"
@@ -150,7 +152,9 @@ def recommend(req: dict, alpha: float = 0.35, top_n: int = 5,
             directions = {"competition": "down", "vitality": "up", "foot": "up",
                           "resident": "up", "transit": "up"}
             missing, cov = [], 0.0
-            wsource = f"균등 가중 폴백 ({lr.get('reason','학습 불가')})"
+            is_fallback = True
+            fallback_reason = lr.get("reason", "학습 불가")
+            wsource = f"균등 가중 폴백 ({fallback_reason})"
     prios = [PRIORITY_MAP[p] for p in (req.get("priority") or []) if p in PRIORITY_MAP]
     final = reweight(weights, prios, ranked=True, alpha=alpha) if prios else weights
     for p in prios:
@@ -165,10 +169,11 @@ def recommend(req: dict, alpha: float = 0.35, top_n: int = 5,
             continue
         p = panel.loc[idx]
         reasons = []
-        # 업종 표본 없는 상권 제외 (경쟁 지표 계산 불가)
+        # AHP/학습 모델은 업종 표본이 있어야 검증 가능하다. 균등 폴백에서는 이
+        # 필터를 해제해, 업종 데이터가 없는 롱테일 입력도 범용 지표로 추천한다.
         n_store = pd.to_numeric(pd.Series([p.get("competition")]),
                                 errors="coerce").fillna(0).iat[0]
-        if n_store < min_store:
+        if not is_fallback and n_store < min_store:
             no_sample.append(p["trdar_cd_nm"])
             continue
         # 하드필터
@@ -193,7 +198,9 @@ def recommend(req: dict, alpha: float = 0.35, top_n: int = 5,
                      "contrib": contrib, "cost": cost, "norm": norm.loc[idx],
                      "adstrd": p.get("adstrd")})
     rows.sort(key=lambda r: -r["score"])
-    return {"induty": induty, "ahp_industry": ahp_ind, "weight_source": wsource, "sigungu": gu, "ages": ages,
+    return {"induty": induty, "ahp_industry": ahp_ind, "weight_source": wsource,
+            "is_fallback": is_fallback, "fallback_reason": fallback_reason,
+            "sigungu": gu, "ages": ages,
             "coverage": cov, "weights_base": weights, "weights_final": final,
             "rows": rows[:top_n], "filtered": filtered, "no_sample": no_sample,
             "n_candidates": len(rows)}

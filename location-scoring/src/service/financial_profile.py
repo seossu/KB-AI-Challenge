@@ -102,6 +102,15 @@ def build_profile(req: dict, top_location: dict) -> dict:
         # ③ 비용
         "cost_breakdown": {k: cost[k] for k in
                            ["보증금", "권리금", "인테리어", "설비비", "가맹비", "운영자금"]},
+        "cost_basis": {
+            "induty": induty,
+            "business_type": cost["type"],
+            "pyeong": pyeong,
+            "sigungu": sigungu,
+            "dong": dong,
+            "monthly_rent": cost["monthly_rent"],
+            "opex_months": 3,
+        },
         "required_fund": total,
         # ④ 보유
         "capital": capital,

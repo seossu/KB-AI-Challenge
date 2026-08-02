@@ -110,6 +110,10 @@ button { font-family: inherit; cursor: pointer; }
 .result-hero .rank1 { font-size: 13px; color: var(--kb-yellow-dark); font-weight: 700; }
 .result-hero h1 { margin: 6px 0; font-size: 28px; }
 .result-hero .score { color: #8a8378; }
+.location-fallback-notice {
+  margin-top: 14px; padding: 11px 13px; border: 1px solid #f2d786; border-radius: 10px;
+  background: #fff9e8; color: #6f5a19; font-size: 13px; line-height: 1.55; text-align: left;
+}
 .map-box { position: relative; width: 100%; height: 340px; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); }
 .map-fallback {
   width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -130,3 +134,57 @@ button { font-family: inherit; cursor: pointer; }
 .tag.rate { background: #e7f6ec; color: #1b7a3d; }
 .prod-comment { margin-top: 10px; font-size: 14px; line-height: 1.5; color: #4a4640; }
 .restart { display: block; margin: 24px auto 40px; background: none; border: 1px solid #ccc; border-radius: 12px; padding: 12px 24px; color: #666; }
+
+.cost-details { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.cost-details summary { cursor: pointer; font-weight: 700; color: #5c554b; }
+.cost-basis { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.cost-basis span { padding: 4px 8px; border-radius: 6px; background: #fff3cc; color: #7a5c00; font-size: 12px; }
+.cost-formula { margin: 12px 0; padding: 10px 12px; border-radius: 8px; background: #faf8f4; color: #5c554b; font-size: 13px; }
+.cost-breakdown-list { border-top: 1px solid var(--line); }
+.cost-breakdown-row, .cost-total-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.cost-breakdown-row small { display: block; margin-top: 3px; color: #9a9488; font-size: 11px; font-weight: 400; }
+.cost-breakdown-row b { white-space: nowrap; font-size: 14px; }
+.cost-total-row { color: #d9822b; font-size: 16px; }
+.cost-note, .cost-disclaimer { margin: 12px 0 0; color: #6f685e; font-size: 12px; line-height: 1.55; }
+.cost-disclaimer { color: #9a9488; }
+
+
+/* 금융상품 추천받기 메인 버튼 */
+.btn-finance-next {
+  width: 100%;
+  padding: 16px;
+  background-color: #ffcc00;
+  color: #222222;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(255, 204, 0, 0.4);
+  margin-top: 20px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease-in-out;
+}
+
+/* 마우스 올렸을 때 살짝 진해지는 효과 */
+.btn-finance-next:hover {
+  background-color: #e6b800;
+  box-shadow: 0 4px 12px rgba(255, 204, 0, 0.6);
+}
+
+/* 처음으로 돌아가기 서브 버튼 */
+.btn-return-home {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  color: #8a8378;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.btn-return-home:hover {
+  color: #5c554b;
+}

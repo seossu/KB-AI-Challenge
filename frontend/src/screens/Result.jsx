@@ -1,8 +1,66 @@
 import { useState } from 'react';
 import NaverMap from '../components/NaverMap.jsx';
 
-const won = (v) => `${(v / 1e4).toLocaleString()}만원`;
+const won = (v) => {
+  const man = Math.round(v / 10000); // 만원 단위로 반올림
+  if (man >= 10000) {
+    const uk = Math.floor(man / 10000); // '억' 단위 추출
+    const remain = man % 10000;         // 남은 '만' 단위 추출
+    return remain > 0 ? `${uk}억 ${remain.toLocaleString()}만원` : `${uk}억원`;
+  }
+  return `${man.toLocaleString()}만원`;
+};
 const CAT_CLASS = { 정책자금: 'tag', 자체대출: 'tag', 보증서: 'tag' };
+
+const COST_LABELS = {
+  '보증금': '상권 임대 시세로 추정',
+  '권리금': '업종별 평균 권리금',
+  '인테리어': '평수 × 업종별 평당 단가',
+  '설비비': '업종·창업형태별 기본 설비',
+  '가맹비': '프랜차이즈 가입·교육·보증 비용',
+  '운영자금': '예상 월세 × 초기 운영 개월',
+};
+
+function CostBreakdown({ cost }) {
+  const entries = Object.entries(cost.breakdown || {});
+  if (!entries.length) return null;
+
+  const basis = cost.basis || {};
+  const location = [basis.sigungu, basis.dong].filter(Boolean).join(' ');
+
+  return (
+    <details className="cost-details" open>
+      <summary>창업비용 계산 결과 자세히 보기</summary>
+      <div className="cost-basis">
+        {[basis.induty, basis.business_type, basis.pyeong && `${basis.pyeong}평`, location]
+          .filter(Boolean)
+          .map((item) => <span key={item}>{item}</span>)}
+      </div>
+      <div className="cost-formula">예상 창업비용 = 시설·초기투자비 + 초기 운영자금</div>
+      <div className="cost-breakdown-list">
+        {entries.map(([name, amount]) => (
+          <div className="cost-breakdown-row" key={name}>
+            <div>
+              <strong>{name}</strong>
+              <small>{COST_LABELS[name]}</small>
+            </div>
+            <b>{won(amount)}</b>
+          </div>
+        ))}
+      </div>
+      <div className="cost-total-row">
+        <span>합계</span><strong>{won(cost.required)}</strong>
+      </div>
+      {basis.monthly_rent != null && (
+        <p className="cost-note">
+          월세는 상권 임대 시세를 바탕으로 약 {won(basis.monthly_rent)}으로 추정했고,
+          운영자금은 초기 {basis.opex_months || 3}개월분으로 계산했습니다.
+        </p>
+      )}
+      <p className="cost-disclaimer">※ 공개 통계와 임대 시세를 활용한 추정치로, 실제 계약·시공·브랜드 견적에 따라 달라질 수 있습니다.</p>
+    </details>
+  );
+}
 
 // 지표 라벨 → 문장에 쓸 '측면' 명사 (조사 이/가 자동 처리)
 const FACTOR_ASPECT = {
@@ -78,6 +136,30 @@ function describeLocation(loc, ranks, sel) {
   return out;
 }
 
+// 💡 [추가] 세부 점수를 시각화하는 미니 프로그레스 바 컴포넌트
+function DetailBar({ label, score, max }) {
+  if (score === undefined || score === null) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px', color: '#999', margin: '4px 0' }}>
+        <span style={{ width: '70px' }}>{label}</span>
+        <span>데이터 없음 (제외)</span>
+      </div>
+    );
+  }
+
+  const percentage = (score / max) * 100;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px', margin: '4px 0' }}>
+      <span style={{ width: '70px', fontWeight: '600', color: '#5c554b' }}>{label}</span>
+      <div style={{ flex: 1, background: '#e6ded1', height: '6px', borderRadius: '3px', margin: '0 8px', overflow: 'hidden' }}>
+        <div style={{ width: `${percentage}%`, background: '#d9822b', height: '100%', borderRadius: '3px', transition: 'width 0.5s ease-in-out' }}></div>
+      </div>
+      <span style={{ width: '35px', textAlign: 'right', color: '#8a8378' }}>{score}/{max}</span>
+    </div>
+  );
+}
+
 export default function Result({ data, onRestart, step, onNext }) {
   const { location, cost, recommendations } = data;
   const isLocationStep = step === 'location'; // 1단계: 입지만 보여주고 금융 설문으로 넘어가기
@@ -129,6 +211,11 @@ export default function Result({ data, onRestart, step, onNext }) {
               ⚠️ {data._fallback}
             </div>
           )}
+          {data.isFallback && (
+            <div className="location-fallback-notice">
+              💡 해당 업종의 세부 분석 데이터가 부족하여, 상권 종합 지표가 가장 우수한 범용적인 입지를 추천해 드립니다.
+            </div>
+          )}
         </div>
 
         <NaverMap lat={active.lat} lng={active.lng} name={active.name} />
@@ -173,6 +260,7 @@ export default function Result({ data, onRestart, step, onNext }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d9822b', fontWeight: 700, marginTop: 6 }}>
               <span>부족 자금</span><span>{won(cost.gap)}</span>
             </div>
+            <CostBreakdown cost={cost} />
           </div>
         )}
         </>
@@ -185,40 +273,67 @@ export default function Result({ data, onRestart, step, onNext }) {
               추천 입지를 확인하셨나요?<br />
               이제 <b>간단한 설문</b>으로 창업자금에 맞는 <b>금융상품</b>을 찾아드릴게요.
             </div>
-            <button className="restart" onClick={onNext}>금융상품 추천받기 →</button>
-            <button
-              className="restart"
-              onClick={onRestart}
-              style={{ background: 'transparent', color: '#8a8378' }}
-            >
-              처음으로
+            <button className="btn-finance-next" onClick={onNext}>
+              금융상품 추천받기 →
+            </button>
+
+            <button className="btn-return-home" onClick={onRestart}>
+              처음으로 돌아가기
             </button>
           </>
         ) : (
           <>
-            {/* 금융상품 추천 */}
-            <div className="section-title">💳 맞춤 금융상품 Top {recommendations.length}</div>
-            {recommendations.map((p) => (
-              <div key={p.rank} className="prod-card">
-                <div className="prod-head">
-                  <div>
-                    <span className="prod-rank">{p.rank}순위</span>
-                    <div className="prod-name">{p.product_name}</div>
-                    <div className="prod-meta">{p.provider}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 800, fontSize: 18 }}>{p.match_score}점</div>
-                  </div>
-                </div>
-                <div className="prod-tags">
-                  <span className={CAT_CLASS[p.category] || 'tag'}>{p.category}</span>
-                  <span className="tag rate">금리 {p.base_rate}%~</span>
-                </div>
-                <div className="prod-comment">💬 {p.ai_comment}</div>
-              </div>
-            ))}
+            {/* 💡 [수정] 금융상품 추천 렌더링 (프로그레스 바 + AI 코멘트 강조) */}
+            <div className="section-title">💳 맞춤 금융상품 Top {recommendations?.length || 0}</div>
 
-            <p style={{ textAlign: 'center', color: '#b0a99c', fontSize: 12 }}>
+            {recommendations && recommendations.length > 0 ? (
+              recommendations.map((p) => (
+                <div key={p.rank} className="prod-card" style={{ padding: '20px', marginBottom: '15px', borderRadius: '12px', background: '#fff', border: '1px solid #e6ded1' }}>
+
+                  {/* 상단: 순위, 이름, 총점 */}
+                  <div className="prod-head" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div>
+                      <span className="prod-rank" style={{ color: '#d9822b', fontWeight: 'bold', fontSize: '13px' }}>{p.rank}순위</span>
+                      <div className="prod-name" style={{ fontSize: '18px', fontWeight: 'bold', margin: '4px 0' }}>{p.product_name}</div>
+                      <div className="prod-meta" style={{ fontSize: '13px', color: '#8a8378' }}>{p.provider}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 800, fontSize: '24px', color: '#d9822b' }}>
+                        {p.match_score}<span style={{fontSize: '14px', color: '#8a8378', fontWeight: 500}}>점</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 태그 영역 */}
+                  <div className="prod-tags" style={{ marginBottom: '15px' }}>
+                    <span className={CAT_CLASS[p.category] || 'tag'}>{p.category}</span>
+                    <span className="tag rate">금리 {p.base_rate !== null ? `${p.base_rate}%~` : '미정'}</span>
+                  </div>
+
+                  {/* AI 코멘트 강조 박스 */}
+                  <div style={{ background: '#fdf3e7', padding: '12px', borderRadius: '8px', marginBottom: '15px', fontSize: '14px', color: '#5c554b', lineHeight: 1.5 }}>
+                    <strong style={{ color: '#d9822b', display: 'block', marginBottom: '4px' }}>💡 AI 분석 코멘트</strong>
+                    {p.ai_comment}
+                  </div>
+
+                  {/* 세부 점수 2단 그리드 (score_detail이 있을 때만 렌더링) */}
+                  {p.score_detail && (
+                    <div style={{ borderTop: '1px dashed #e6ded1', paddingTop: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 15px' }}>
+                      <DetailBar label="창업조건" score={p.score_detail.startup} max={25} />
+                      <DetailBar label="신용/담보" score={p.score_detail.credit_collateral} max={20} />
+                      <DetailBar label="자금용도" score={p.score_detail.purpose} max={20} />
+                      <DetailBar label="한도충족" score={p.score_detail.coverage} max={15} />
+                      <DetailBar label="금리경쟁" score={p.score_detail.rate} max={15} />
+                      <DetailBar label="우대조건" score={p.score_detail.benefit} max={5} />
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: '30px', color: '#8a8378' }}>조건에 맞는 상품이 없습니다.</div>
+            )}
+
+            <p style={{ textAlign: 'center', color: '#b0a99c', fontSize: 12, marginTop: '20px' }}>
               ※ 금융상품은 예시(mock)이며 실제 자격·한도는 각 기관 심사로 확정됩니다.
             </p>
             <button className="restart" onClick={onRestart}>처음으로</button>

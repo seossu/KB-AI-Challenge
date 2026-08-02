@@ -130,9 +130,9 @@ export async function recommendLocation(phase1) {
           naverQuery: g.naverQuery || g.name, reasons: g.reasons || [],
         },
         candidates: data.candidates || [],
-        cost: data.cost
-          ? { required: data.cost.required, capital: data.cost.capital, gap: data.cost.gap }
-          : null,
+        cost: data.cost || null,
+        weightSource: data.weight_source,
+        isFallback: Boolean(data.is_fallback),
         phase1,
       };
     }
@@ -182,9 +182,9 @@ export async function recommend(phase1, profile) {
             reasons: g.reasons || [],
           },
           candidates: data.candidates || [],
-          cost: data.cost
-            ? { required: data.cost.required, capital: data.cost.capital, gap: data.cost.gap }
-            : null,
+          cost: data.cost || null,
+          weightSource: data.weight_source,
+          isFallback: Boolean(data.is_fallback),
         },
       };
     } else {
