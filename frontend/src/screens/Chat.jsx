@@ -37,7 +37,12 @@ export default function Chat({ onFinish }) {
     setExtracted(merged);
 
     // "이대로 진행" 버튼을 눌렀고 필수정보가 있으면 즉시 종료
-    const proceedNow = forceProceed && merged.business_type && merged.preferred_region && merged.capital;
+    const proceedNow = forceProceed && 
+      merged.business_type && 
+      merged.preferred_region && 
+      merged.capital && 
+      merged.store_size_pyeong &&    // <-- '평수' 키값 맞추기
+      merged.purpose; // <-- 5번째 필수 항목 키값
 
     if (ready || proceedNow) {
       setMessages((m) => [...m, { role: 'assistant', content: '네, 취합된 정보로 맞춤형 입지 추천을 시작합니다. ⚙️' }]);
@@ -47,7 +52,13 @@ export default function Chat({ onFinish }) {
     }
     // 화면엔 next_question, 모델용 apiContent 엔 전체 JSON 저장
     setMessages((m) => [...m, { role: 'assistant', content: next_question || '조금 더 알려주세요.', apiContent: raw }]);
-    setCanProceed(!!(merged.business_type && merged.preferred_region && merged.capital));
+    setCanProceed(!!(
+      merged.business_type && 
+      merged.preferred_region && 
+      merged.capital && 
+      merged.store_size_pyeong &&    // <-- '평수' 키값 맞추기
+      merged.purpose // <-- 5번째 필수 항목 키값
+));
     setBusy(false);
   }
 
