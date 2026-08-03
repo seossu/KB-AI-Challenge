@@ -1,24 +1,26 @@
-# 모든 폴더의 환경변수 파일 원천 차단
+# 환경변수 파일
 .env
 
-# 가상환경 및 패키지 모듈 폴더
+# Python 가상환경
 venv/
-node_modules/
 .venv/
 
-# 파이썬 캐시 파일 (이것도 깃허브에 올라가면 지저분해집니다)
+# Node.js 패키지
+node_modules/
+
+# Python 캐시
 __pycache__/
 *.pyc
 */__pycache__/*
-_cache/
 
-# 맥 OS 시스템 파일
+# 프로젝트 캐시
+_cache/
+location-scoring/data/_cache/
+location-scoring/data/ai_input.json
+
+# 운영체제 파일
 .DS_Store
+
 # 빌드 산출물
 dist/
 frontend/dist/
-
-# 파이썬 데이터 캐시
-location-scoring/data/_cache/
-location-scoring/data/ai_input.json
-location-scoring/data/_cache
