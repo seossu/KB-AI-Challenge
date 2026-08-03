@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"  # 외부에서 IP 쳐서 들어올 때 프론트로 바로 접속되도록 80번 사용
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: .  # 💡 중요: 최상단 폴더를 기준으로 빌드해야 파이썬 폴더까지 통째로 가져갈 수 있음
+      dockerfile: ./backend/Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env # 환경변수 파일 필요시

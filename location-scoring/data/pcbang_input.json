@@ -1,0 +1,14 @@
+{
+  "purpose": "창업",
+  "business_type": "PC방",
+  "capital": 350000000,
+  "preferred_region": "마포구",
+  "target_customer": "10~20대",
+  "priority": [
+    "낮은 경쟁",
+    "낮은 임대료"
+  ],
+  "store_size": "50평",
+  "parking": false,
+  "public_transport": true
+}

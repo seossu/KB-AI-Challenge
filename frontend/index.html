@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KB 창업 입지·금융 컨설팅</title>
+
+    <!--
+      네이버 지도 JS API.
+      ⚠️ YOUR_NAVER_CLIENT_ID 를 네이버 클라우드 플랫폼(NCP)에서 발급받은
+         Maps 클라이언트 ID로 교체하세요. (console.ncloud.com → AI·NAVER API → Maps)
+      콘솔이 신형이면 파라미터가 ncpKeyId 일 수 있습니다: ?ncpKeyId=...
+      키가 없어도 앱은 동작하며, 지도 자리에 안내 박스가 표시됩니다.
+    -->
+    <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=%VITE_NAVER_MAP_CLIENT_ID%"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
